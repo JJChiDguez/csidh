@@ -54,12 +54,18 @@ an input of the Makefile [variable CC is optional, gcc is set by default]).
 
 # Testing a CSIDH protocol (key exchange protocol)
 [Compilation]
+
 	(Using dummy operations and one torsion point)
+	
 		make csidh BITLENGTH_OF_P=512 TYPE=WITHDUMMY_1
+		
 	(Using dummy operations and two torsion points)
+	
 		make csidh BITLENGTH_OF_P=512 TYPE=WITHDUMMY_2
+		
 	(Dummy-free approach and using two torsion points)
 		make csidh BITLENGTH_OF_P=512 TYPE=DUMMYFREE
+		
 
 [Execution]
 		./bin/csidh
