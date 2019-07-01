@@ -56,23 +56,21 @@ an input of the Makefile [variable CC is optional, gcc is set by default]).
 [Compilation]
 
 	(Using dummy operations and one torsion point)
-	
 		make csidh BITLENGTH_OF_P=512 TYPE=WITHDUMMY_1
-		
 	(Using dummy operations and two torsion points)
-	
 		make csidh BITLENGTH_OF_P=512 TYPE=WITHDUMMY_2
-		
 	(Dummy-free approach and using two torsion points)
 		make csidh BITLENGTH_OF_P=512 TYPE=DUMMYFREE
 		
 
 [Execution]
+
 		./bin/csidh
 
 
 # Running-time: number of field operations
 [Compilation]
+
 	(Using dummy operations and one torsion point)
 		make action_cost BITLENGTH_OF_P=512 TYPE=WITHDUMMY_1
 	(Using dummy operations and two torsion points)
@@ -81,10 +79,12 @@ an input of the Makefile [variable CC is optional, gcc is set by default]).
 		make action_cost BITLENGTH_OF_P=512 TYPE=DUMMYFREE
 
 [Execution]
+
 		./bin/action_cost
 
 # Running-time: number of clock cycles
 [Compilation]
+
 	(Using dummy operations and one torsion point)
 		make action_timing BITLENGTH_OF_P=512 TYPE=WITHDUMMY_1
 	(Using dummy operations and two torsion points)
@@ -93,7 +93,9 @@ an input of the Makefile [variable CC is optional, gcc is set by default]).
 		make action_timing BITLENGTH_OF_P=512 TYPE=DUMMYFREE
 
 [Execution]
+
 		./bin/action_timing
 
 # Clean
+
 	make clean
