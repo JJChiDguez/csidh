@@ -1,3 +1,4 @@
+#include <math.h>
 #include<time.h>
 
 #include "fp.h"
@@ -20,130 +21,116 @@ static uint8_t csidh(proj out, const uint8_t sk[], const proj in)
 	if (!validate(in)) {
 		return 0;
 	};
-
 	action_evaluation(out, sk, in);
 	return 1;
 };
 
+unsigned long its = 1024;
+
 int main()
 {
-	uint64_t c0, c1;
+	unsigned int i;
 
-	fp u;
-	uint8_t sk_alice[N],	// secret key of Alice
-	         sk_bob[N];	// secret key of Bob
+	uint64_t add_min = 0xFFFFFFFFFFFFFFFF, add_max = 0, 
+	         sqr_min = 0xFFFFFFFFFFFFFFFF, sqr_max = 0, 
+	         mul_min = 0xFFFFFFFFFFFFFFFF, mul_max = 0;
 
-	
+	float add_mean = 0, add_variance = 0,
+	      sqr_mean = 0, sqr_variance = 0,
+	      mul_mean = 0, mul_variance = 0;
+
+	uint64_t add_sample[its],
+	         sqr_sample[its],
+	         mul_sample[its];
+
 	// ---
-	proj random_E, tmp_E;
 	uint8_t key[N];
-	random_key(key);
-	csidh(random_E, key, E);
+	proj random_E;
+	point_copy(random_E, E);
 
-	// ---
-	printf("NOTE: all the arithmetic is in Montgomery domain. ");
-	printf("In addition, the ordering of the prime factors l_i's is:\n");
-	printf("L := {\t  %3d", L[0]);
-
-	for(int i = 1; i < N; i++)
+	for(i = 0; i < its; ++i)
 	{
-		printf(", %3d", L[i]);
-		if( (i % 18) == 17 )
-			printf("\n\t");
+
+		if (its >= 100 && i % (its / 100) == 0) {
+			printf("Doing %lu iterations of action with validation key:\t", its);
+            printf("%2lu%%", 100 * i / its);
+            fflush(stdout);
+            printf("\r\x1b[K");
+        }
+
+		random_key(key);
+		assert(csidh(random_E, key, random_E));
+		
+		// ---
+		add_sample[i] = FP_ADD_COMPUTED;
+		sqr_sample[i] = FP_SQR_COMPUTED;
+		mul_sample[i] = FP_MUL_COMPUTED;
+
+		/**************************************/
+		if(add_min > add_sample[i])
+			add_min = add_sample[i];
+		if(sqr_min > sqr_sample[i])
+			sqr_min = sqr_sample[i];
+		if(mul_min > mul_sample[i])
+			mul_min = mul_sample[i];
+
+		/**************************************/
+		if(add_max < add_sample[i])
+			add_max = add_sample[i];
+		if(sqr_max < sqr_sample[i])
+			sqr_max = sqr_sample[i];
+		if(mul_max < mul_sample[i])
+			mul_max = mul_sample[i];
+		
+		/**************************************/
+		add_mean += (float)add_sample[i];
+		sqr_mean += (float)sqr_sample[i];
+		mul_mean += (float)mul_sample[i];
 	};
-	printf("};\n");
 
-	printf("Moreover, the secret exponents belong to { -B_i, ..., 0, ..., B_i } where\n");
-	printf("B := {\t  %3d", B[0]);
-	for(int i = 1; i < N; i++)
+
+	add_mean = add_mean / ((float)its * 1.0);
+	sqr_mean = sqr_mean / ((float)its * 1.0);
+	mul_mean = mul_mean / ((float)its * 1.0);
+
+	for (i = 0; i < its; ++i)
 	{
-		printf(", %3d", B[i]);
-		if( (i % 18) == 17 )
-			printf("\n\t");
+		add_variance += (add_sample[i] - add_mean)*(add_sample[i] - add_mean);
+		sqr_variance += (sqr_sample[i] - sqr_mean)*(sqr_sample[i] - sqr_mean);
+		mul_variance += (mul_sample[i] - mul_mean)*(mul_sample[i] - mul_mean);
 	};
-	printf("};\n");
-	printf("The dummy-free case implies that the secret exponents satisfy (e_i mod 2) = (b_i mod 2).\n");
 
-	printf("-----------------------------------------------------------------------------------------------------\n");
-	printf("First step: Alice and Bob random generate a secret key, and both compute and send their public curves\n\n");
-	// Alice: random key generation
-	random_key(sk_alice);
-	printf_key(sk_alice, "sk_alice");
+	add_variance = add_variance / ((float)its - 1.0);
+	sqr_variance = sqr_variance / ((float)its - 1.0);
+	mul_variance = mul_variance / ((float)its - 1.0);
+		
+	printf("\x1b[01;33mIterations: %lu\x1b[0m\n\n", its);
 
-	proj E_alice;
-	c0 = get_cycles();
-	assert(csidh(E_alice, sk_alice, E));
-	c1 = get_cycles();
-	fp_print(E_alice[0], NUMBER_OF_WORDS, 0, "E_alice_a ");
-	fp_print(E_alice[1], NUMBER_OF_WORDS, 0, "E_alice_ad");
-	printf("clock cycles: %3.03lf\n", ( 1.0 * (c1 - c0)) / (1000000.0));
-	printf("Number of field operations computed: (%lu)M + (%lu)S + (%lu)a\n\n", FP_MUL_COMPUTED, FP_SQR_COMPUTED, FP_ADD_COMPUTED);
-
-	// Bob: random key generation
-	random_key(sk_bob);
-	printf_key(sk_bob, "sk_bob");
-
-	proj E_bob;
-	c0 = get_cycles();
-	assert(csidh(E_bob, sk_bob, E));
-	c1 = get_cycles();
-	fp_print(E_bob[0], NUMBER_OF_WORDS, 0, "E_bob_a ");
-	fp_print(E_bob[1], NUMBER_OF_WORDS, 0, "E_bob_ad");
-	printf("clock cycles: %3.03lf\n", ( 1.0 * (c1 - c0)) / (1000000.0));
-	printf("Number of field operations computed: (%lu)M + (%lu)S + (%lu)a\n", FP_MUL_COMPUTED, FP_SQR_COMPUTED, FP_ADD_COMPUTED);
-
-
-	printf("\n");	
-	printf("------------------------------------------------------------------------------------------------------------\n");
-	printf("Second step: Alice a Bob compute the shared secret by using the public curves of Bob and Alice, respectively\n");
-	// Alice: shared secret
-	proj ss_alice;
-	c0 = get_cycles();
-	assert(csidh(ss_alice, sk_alice, E_bob));
-	c1 = get_cycles();
-	fp_print(ss_alice[0], NUMBER_OF_WORDS, 0, "ss_alice_a ");
-	fp_print(ss_alice[1], NUMBER_OF_WORDS, 0, "ss_alice_ad");
-	printf("clock cycles: %3.03lf\n", ( 1.0 * (c1 - c0)) / (1000000.0));
-	printf("Number of field operations computed: (%lu)M + (%lu)S + (%lu)a\n", FP_MUL_COMPUTED, FP_SQR_COMPUTED, FP_ADD_COMPUTED);
+	printf("\x1b[33mAverage costs:\x1b[0m\n");
+	printf("\t %f additions,\n", add_mean);
+	printf("\t\x1b[32m %f squarings,\x1b[0m\n", sqr_mean);
+	printf("\t\x1b[31m %f multiplications.\x1b[0m\n", mul_mean);
 
 	printf("\n");
-	// Bob: shared secret
-	proj ss_bob;
-	c0 = get_cycles();
-	assert(csidh(ss_bob, sk_bob, E_alice));
-	c1 = get_cycles();
-	fp_print(ss_bob[0], NUMBER_OF_WORDS, 0, "ss_bob_a ");
-	fp_print(ss_bob[1], NUMBER_OF_WORDS, 0, "ss_bob_ad");
-	printf("clock cycles: %3.03lf\n", ( 1.0 * (c1 - c0)) / (1000000.0));
-	printf("Number of field operations computed: (%lu)M + (%lu)S + (%lu)a\n", FP_MUL_COMPUTED, FP_SQR_COMPUTED, FP_ADD_COMPUTED);
-	
+
+	printf("\x1b[33mStandard deviation of the costs:\x1b[0m\n");
+	printf("\t %f additions,\n", sqrt(add_variance));
+	printf("\t\x1b[32m %f squarings,\x1b[0m\n", sqrt(sqr_variance));
+	printf("\t\x1b[31m %f multiplications.\x1b[0m\n", sqrt(mul_variance));
+
 	printf("\n");
-	printf("------------------------------------------------------------------------------------------------------------\n");
-	printf("At the end of the protocol, Alice and Bob have different but isomorphic Edwards curves. In other words, the\n");
-	printf("Montgomery curve isomorphic to each one is the same. Thus, (ss_alice_a / ss_alice_ad) = (ss_bob_a / ss_bob_ad).\n");
 
-	fp ss_a, ss_b;
-	fp_inv(ss_alice[1]);
-	fp_mul(ss_a, ss_alice[0], ss_alice[1]);
+	printf("\x1b[33mMinimum costs:\x1b[0m\n");
+	printf("\t %lu additions,\n", add_min);
+	printf("\t\x1b[32m %lu squarings,\x1b[0m\n", sqr_min);
+	printf("\t\x1b[31m %lu multiplications.\x1b[0m\n", mul_min);
 
-	fp_inv(ss_bob[1]);
-	fp_mul(ss_b, ss_bob[0], ss_bob[1]);
-	fp_print(ss_a, NUMBER_OF_WORDS, 0, "ss_a");
-	fp_print(ss_b, NUMBER_OF_WORDS, 0, "ss_b");
-
-	if( compare(ss_a, ss_b, NUMBER_OF_WORDS) != 0 )
-	{
-		printf("\x1b[31m    _ ___    __ _     _        __ __ __ _  __ _____    __    _  _  __ _  \x1b[0m\n");
-		printf("\x1b[31m|\\|/ \\ |    |_ / \\| ||_||     (_ |_ /  |_)|_ /   |    (_ |_||_||_)|_ | \\ \x1b[0m\n");
-		printf("\x1b[31m| |\\_/ |    |__\\_X|_|| ||__   __)|__\\__| \\|__\\__ |    __)| || || \\|__|_/ \x1b[0m\n");
-	}
-	else
-	{
-		printf("\x1b[32m __ _     _        __ __ __ _  __ _____    __    _  _  __ _ \x1b[0m\n");
-		printf("\x1b[32m|_ / \\| ||_||     (_ |_ /  |_)|_ /   |    (_ |_||_||_)|_ | \\ \x1b[0m\n");
-		printf("\x1b[32m|__\\_X|_|| ||__   __)|__\\__| \\|__\\__ |    __)| || || \\|__|_/ \x1b[0m\n");
-	}
 	printf("\n");
+
+	printf("\x1b[33mMaximum costs:\x1b[0m\n");
+	printf("\t %lu additions,\n", add_max);
+	printf("\t\x1b[32m %lu squarings,\x1b[0m\n", sqr_max);
+	printf("\t\x1b[31m %lu multiplications.\x1b[0m\n", mul_max);
 
 	return 0;
 };
