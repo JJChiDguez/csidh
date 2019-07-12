@@ -38,13 +38,20 @@ int main()
 
 	// ---
 	uint8_t key[N];
-	proj random_E, random_Tp, random_Tm;
+	proj random_E;
 
 	point_copy(random_E, E);
-	point_copy(random_Tp, T_p);
 
 	for(i = 0; i < its; ++i)
 	{
+
+		if (its >= 100 && i % (its / 100) == 0) {
+			printf("Doing %lu iterations of action with validation key:\t", its);
+            printf("%2lu%%", 100 * i / its);
+            fflush(stdout);
+            printf("\r\x1b[K");
+        }
+
 		random_key(key);
 		cc_0 = get_cycles();
 		assert(csidh(random_E, key, random_E));
