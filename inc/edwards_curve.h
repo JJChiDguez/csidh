@@ -27,7 +27,7 @@ uint64_t FP_ADD_COMPUTED,	// Variable used for counting the number of field addi
 #endif
 
 // Functions related with the point arithmetic
-int isZero_Point(const proj P);			// To determine if a projective y-coordinate point is the infinity
+int isinfinity(const proj P);			// To determine if a projective y-coordinate point is the infinity
 void point_copy(proj Q, const proj P);		// To make a copy of a point
 uint8_t areEqual(const proj P, const proj Q);	// To check if two points are equal
 
