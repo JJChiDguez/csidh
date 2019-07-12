@@ -81,23 +81,20 @@ static inline int compare(uint64_t *x, uint64_t *y, int NUM)
 }
 
 /* ------------------------------------------------------------- *
-   compare_with_zero()
+   iszero()
    inputs: two integer numbers x and y, and the number of 64-bits 
            words of x and y.
    outputs:
-            +1 if x > 0,
-            -1 if x < 0, or
-             0 if x = 0.
+             1 if x = 0,
+             0 otherwise
  * ------------------------------------------------------------- */
-static inline int compare_with_zero(uint64_t *x, int NUM)
+static inline int iszero(uint64_t *x, int NUM)
 {
 	int i;
+	uint64_t c = 0;
 	for (i=NUM-1; i >= 0; i--) 
-    {
-		if (x[i] != 0) 
-            return x[i] > 0 ? 1 : -1; 
-	}
-	return 0;
+    	c |= x[i];
+	return (c == 0);
 }
 
 /* ------------------------------------------------------------- *
