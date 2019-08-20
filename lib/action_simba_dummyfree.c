@@ -169,9 +169,12 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 				point_copy(G[0], current_T[0]);
 				point_copy(G[1], current_T[1]);
                 
-                		ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
-                		fp_cswap(G[0][0], G[1][0], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
-                		fp_cswap(G[0][1], G[1][1], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+				ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
+				fp_cswap(G[0][0], G[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+				fp_cswap(G[0][1], G[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+
+				fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+				fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
                 
 				for (j = (i + 1); j < size_of_each_batch[m]; j++)
 				{
@@ -190,16 +193,10 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 					
 					if ( isequal(batches[m][i], last_isogeny[m]) == 0)	// constant-time ask: just for avoiding the last isogeny evaluation
 					{
-						fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-						fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-
 						yEVAL(current_T[0], current_T[0], K, batches[m][i]);	// evaluation of T[0]
 						yEVAL(current_T[1], current_T[1], K, batches[m][i]);	// evaluation of T[1]
 
 						yMUL(current_T[1], current_T[1], current_A, batches[m][i]);	// [l]T[1]
-
-						fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-						fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
 					};
 
 					tmp_e[batches[m][i]] = ((((ec >> 1) - (bc ^ 1)) ^ bc) << 1) ^ ((ec & 0x1) ^ bc);
@@ -209,17 +206,12 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 				else
 				{
 					// We must perform at most two scalar multiplications by l.
-                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-                    
-                    			if (isinfinity(G[0]) != 1)
-                        			yMUL(current_T[0], current_T[0], current_A, batches[m][i]);
-                    
 					yMUL(current_T[1], current_T[1], current_A, batches[m][i]);
-                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
 				};
 
+				fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+				fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                
 				if( counter[batches[m][i]] == 0 )
 				{	
 					//depends only on randomness
