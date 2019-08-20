@@ -165,26 +165,26 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 			}
 			else
 			{
-				// Now, a degree-(l_{batches[m][i]}) will be constructed
+				// Now, a degree-(l_{batches[m][i]}) will be constructed               
 				point_copy(G[0], current_T[0]);
 				point_copy(G[1], current_T[1]);
+                
+                		ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
+                		fp_cswap(G[0][0], G[1][0], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+                		fp_cswap(G[0][1], G[1][1], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+                
 				for (j = (i + 1); j < size_of_each_batch[m]; j++)
 				{
 					if( finished[batches[m][j]] == 0 )
 					{
 						//depends only on randomness
 						yMUL(G[0], G[0], current_A, batches[m][j]);
-						yMUL(G[1], G[1], current_A, batches[m][j]);
 					};
 				};
 
 				if ( (isinfinity(G[0]) != 1) && (isinfinity(G[1]) != 1) )	// Depending on randomness
 				{
-					ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
 					bc = isequal(ec >> 1, 0) & 1;		// Bit that determine the current isogeny. This ask is done in constant-time
-
-					fp_cswap(G[0][0], G[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-					fp_cswap(G[0][1], G[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
 
 					yISOG(K, current_A, G[0], current_A, batches[m][i]);
 					
@@ -209,11 +209,15 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 				else
 				{
 					// We must perform at most two scalar multiplications by l.
-					if (isinfinity(G[0]) != 1)
-						yMUL(current_T[0], current_T[0], current_A, batches[m][i]);
-
-					if (isinfinity(G[1]) != 1)
-						yMUL(current_T[1], current_T[1], current_A, batches[m][i]);
+                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                    
+                    			if (isinfinity(G[0]) != 1)
+                        			yMUL(current_T[0], current_T[0], current_A, batches[m][i]);
+                    
+					yMUL(current_T[1], current_T[1], current_A, batches[m][i]);
+                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
 				};
 
 				if( counter[batches[m][i]] == 0 )
