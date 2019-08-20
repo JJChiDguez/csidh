@@ -159,29 +159,28 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 				// Now, a degree-(l_{batches[m][i]}) will be constructed. Let l = l_{batches[m][i]}.
 				point_copy(G[0], current_T[0]);	// order-l point determined by T_{-}
 				point_copy(G[1], current_T[1]);	// order-l point determined by T_{+}
+		                point_copy(G[2], current_T[0]);	// T_{-}
+                		point_copy(G[3], current_T[1]);	// T_{+}
+                
+                		ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
+                		fp_cswap(G[0][0], G[1][0], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+                		fp_cswap(G[0][1], G[1][1], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+                		fp_cswap(G[2][0], G[3][0], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+                		fp_cswap(G[2][1], G[3][1], (ec & 1));	// constant-time swap: T_{+} or T_{-}, that is the question.
+
 				for (j = (i + 1); j < size_of_each_batch[m]; j++)
 				{
 					if( finished[batches[m][j]] == 0 )
 					{
 						//depends only on randomness
 						yMUL(G[0], G[0], current_A[0], batches[m][j]);	// Corresponding with T_{-}
-						yMUL(G[1], G[1], current_A[0], batches[m][j]);	// Corresponding with T_{+}
 					};
 				};
 
-				if ( (isinfinity(G[0]) != 1) && (isinfinity(G[1]) != 1) )	// Depending on randomness
+				if (isinfinity(G[0]) != 1)	// Depending on randomness
 				{
-					point_copy(G[2], current_T[0]);	// T_{-}
-					point_copy(G[3], current_T[1]);	// T_{+}
-
-					ec = lookup(batches[m][i], tmp_e);	// To get current e_i in constant-time
 					bc = isequal(ec >> 1, 0) & 1;		// Bit that determines if a dummy operation will be perfomed
 					
-					fp_cswap(G[0][0], G[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-					fp_cswap(G[0][1], G[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-					fp_cswap(G[2][0], G[3][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-					fp_cswap(G[2][1], G[3][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
-
 					fp_cswap(G[0][0], G[2][0], bc);		// constant-time swap: dummy or not dummy, that is the question.
 					fp_cswap(G[0][1], G[2][1], bc);		// constant-time swap: dummy or not dummy, that is the question.
 
@@ -192,8 +191,8 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 						mask = isequal(L[batches[m][i]], 3);		// Just for catching the case l = 3. This ask is done in constant-time
 						si = (L[batches[m][i]] >> 1);			// (l - 1) / 2
 
-						fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
-						fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
+						fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+						fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
 
 						yMUL(current_T[1], current_T[1], current_A[0], batches[m][i]);	// [l]T[1]
 
@@ -224,12 +223,16 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 				}
 				else
 				{
-					// We must perform at most two scalar multiplications by l.
-					if (isinfinity(G[0]) != 1)
-						yMUL(current_T[0], current_T[0], current_A[0], batches[m][i]);
-
-					if (isinfinity(G[1]) != 1)
-						yMUL(current_T[1], current_T[1], current_A[0], batches[m][i]);
+					// We must perform two scalar multiplications by l.
+                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: T_{+} or T_{-}, that is the question.
+                    
+                    			if (isinfinity(G[0]) != 1)
+                        			yMUL(current_T[0], current_T[0], current_A[0], batches[m][i]);
+                    
+					yMUL(current_T[1], current_T[1], current_A[0], batches[m][i]);
+                    			fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
+                    			fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
 				};
 
 				if( counter[batches[m][i]] == 0 )
