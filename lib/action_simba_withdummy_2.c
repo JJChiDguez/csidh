@@ -226,6 +226,7 @@ void action_evaluation(proj C, const uint8_t key[], const proj A)
 
 				fp_cswap(current_T[0][0], current_T[1][0], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
 				fp_cswap(current_T[0][1], current_T[1][1], (ec & 1));		// constant-time swap: dummy or not dummy, that is the question.
+				
 				if( counter[batches[m][i]] == 0 )
 				{	
 					//depends only on randomness
