@@ -32,7 +32,7 @@ OUTPUT_ACTION_CC=./bin/action_timing
 CFLAGS_ACTION_CC=-O3 -funroll-loops -fomit-frame-pointer -m64 -mbmi2 -DFP_$(BITLENGTH_OF_P) -D$(TYPE) -lm
 
 # GLOBAL FLAGS
-CFLAGS_ALWAYS=
+CFLAGS_ALWAYS=-fcommon
 
 # COMPILER
 CC=gcc
