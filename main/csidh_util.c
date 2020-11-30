@@ -8,6 +8,15 @@
 
 #include "csidh_util.h"
 
+void normalize_public_key(proj public_key, fp *out) {
+    /* Compress the public key from x,y (256 bits) to x/y,NULL (128 bits) */
+    // public_key has entries x,y or public_key[0] and public_key[1]
+    fp n_public_key;
+    fp_inv(public_key[1]); // fp_inv becomes x,1/y or public_key[0] = x and public_key[1] = 1/y
+    fp_mul(n_public_key, public_key[0], public_key[1]); // normalized_public_key is x*1/y or x/y aka public_key[0]/public_key[1]
+    memcpy(out, n_public_key, sizeof(fp));
+}
+
 // slightly modified csidh from main/csidh.c
 static uint8_t csidh(proj out, const uint8_t sk[], const proj in)
 {
@@ -29,10 +38,11 @@ void pprint_ss(uint64_t *x)
         printf("%.16" PRIX64 "", x[i]);
     }
     printf("\n");
+
 }
 
 void pprint_pk(void *x) {
-  for (size_t i = 0; i < sizeof(proj); ++i) {
+  for (size_t i = 0; i < (sizeof(proj)/2); ++i) {
     printf("%02hhx", ((uint8_t *)x)[i]);
   }
   printf("\n");
@@ -50,7 +60,7 @@ void save_file(char *file, void *buf, size_t len) {
   if (file != NULL) {
     fhandle = fopen(file, "w");
     if (fhandle == NULL) {
-      fprintf(stderr, "Unable to open %s", file);
+      fprintf(stderr, "Unable to open %s\n", file);
       exit(1);
     }
     for (size_t i = 0; i < len; ++i)
@@ -90,12 +100,14 @@ int read_stdin(uint8_t *buf, int len) {
 
 int main(int argc, char **argv) {
   uint8_t private_key[N];
+  proj expanded_public_key;
   proj public_key;
   proj shared_secret_key;
 
-  //explicit_bzero(&private_key, sizeof(private_key));
-  //explicit_bzero(&public_key, sizeof(private_key));
-  //explicit_bzero(&shared_secret_key, sizeof(shared_secret_key));
+  explicit_bzero(&private_key, sizeof(private_key));
+  explicit_bzero(&public_key, sizeof(proj));
+  explicit_bzero(&expanded_public_key, sizeof(proj));
+  explicit_bzero(&shared_secret_key, sizeof(proj));
 
   int csidh_validate = 0;
   int option = 0;
@@ -162,18 +174,25 @@ int main(int argc, char **argv) {
     }
     random_key(private_key);
     csidh_validate = csidh(public_key, private_key, E);
-    if (!csidh_validate && !validate(public_key)) {
+    if (!csidh_validate) {
       error_exit("csidh_validate: failed");
     }
     if (priv_key_file == NULL){
       pprint_sk(private_key);
     } else {
+      if (verbose) { pprint_sk(private_key); }
       save_file(priv_key_file, &private_key, sizeof(uint8_t [N]));
     }
+
+    /* Normalize (aka compress) the public key in size from 256 bits to 128 bits. */
+    fp normalized_public_key;
+    explicit_bzero(&normalized_public_key, sizeof(fp));
+    normalize_public_key(public_key, &normalized_public_key);
     if (pub_key_file == NULL){
-      pprint_pk(public_key);
+      pprint_pk(normalized_public_key);
     } else {
-      save_file(pub_key_file, public_key, sizeof(proj));
+      if (verbose) { pprint_pk(normalized_public_key);}
+      save_file(pub_key_file, normalized_public_key, (sizeof(proj)/2));
     }
     return 0;
   }
@@ -191,30 +210,35 @@ int main(int argc, char **argv) {
       error_exit("Unable to read correct number of bytes for private key");
     }
 
-    if (sizeof(public_key) !=
+    if ((sizeof(public_key)/2) !=
         ((pub_key_file != NULL)
              ? read_file(pub_key_file, (uint8_t *)public_key,
-                         sizeof(proj))
-             : read_stdin((uint8_t *)public_key, sizeof(proj)))) {
+                         (sizeof(proj)/2))
+             : read_stdin((uint8_t *)public_key, (sizeof(proj)/2)))) {
       error_exit("Unable to read correct number of bytes for public key");
     }
 
-    if (!validate(public_key)) {
-      error_exit("csidh_validate: failed");
-    }
-    csidh_validate = csidh(shared_secret_key, private_key, public_key);
+    /* Expand the normalized key. */
+    memcpy(expanded_public_key[1], R_mod_p, (sizeof(expanded_public_key[1])));
+    memcpy(expanded_public_key[0], public_key, (sizeof(expanded_public_key[0])));
+
+    /* Operate on the expanded public key. */
+    csidh_validate = csidh(shared_secret_key, private_key, expanded_public_key);
     if (!csidh_validate) {
       error_exit("csidh_validate: failed");
     }
+
+    /* Normalize our shared secret. */
     fp shared_secret;
     fp_inv(shared_secret_key[1]);
     fp_mul(shared_secret, shared_secret_key[0], shared_secret_key[1]);
 
     if (verbose) {
       pprint_sk(private_key);
-      pprint_pk(public_key);
+      pprint_pk(expanded_public_key);
     }
     pprint_ss(shared_secret);
+
     return 0;
   }
 

@@ -4,6 +4,8 @@
 #include "fp.h"
 #include "edwards_curve.h"
 
+extern const fp R_mod_p;
+
 #define VERSION 0.1
 
 void pprint_pk(void *x);
