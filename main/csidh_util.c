@@ -14,6 +14,9 @@ void normalize_public_key(proj public_key, fp *out) {
     fp n_public_key;
     fp_inv(public_key[1]); // fp_inv becomes x,1/y or public_key[0] = x and public_key[1] = 1/y
     fp_mul(n_public_key, public_key[0], public_key[1]); // normalized_public_key is x*1/y or x/y aka public_key[0]/public_key[1]
+    /* Convert to Montgomery form */
+    fp_mul(n_public_key, n_public_key, E[1]); // x/y * 4
+    fp_sub(n_public_key, n_public_key, E[0]); // x/y - 2
     memcpy(out, n_public_key, sizeof(fp));
 }
 
@@ -28,17 +31,15 @@ static uint8_t csidh(proj out, const uint8_t sk[], const proj in)
   return 1;
 };
 
-// slightly modified fp_print from inc/fp.h
 void pprint_ss(uint64_t *x)
 {
-    int NUM = NUMBER_OF_WORDS;
-    int TYPE = 0;
+    /* for p512 we print 8 64bit little endian values as hex. */
+    int ceiling = 7;
     int i;
-    for(i=NUM-1; i > -1; i--){
+    for(i=ceiling; i >= 0; --i){
         printf("%.16" PRIX64 "", x[i]);
     }
     printf("\n");
-
 }
 
 void pprint_pk(void *x) {
@@ -80,7 +81,7 @@ int read_file(const char *file, uint8_t *buf, size_t len) {
   FILE *fhandle;
   fhandle = fopen(file, "r");
   if (fhandle == NULL) {
-    fprintf(stderr, "Unable to open %s", file);
+    fprintf(stderr, "Unable to open %s\n", file);
     exit(3);
   }
   for (size_t i = 0; i < len; ++i) {
@@ -218,9 +219,18 @@ int main(int argc, char **argv) {
       error_exit("Unable to read correct number of bytes for public key");
     }
 
-    /* Expand the normalized key. */
-    memcpy(expanded_public_key[1], R_mod_p, (sizeof(expanded_public_key[1])));
-    memcpy(expanded_public_key[0], public_key, (sizeof(expanded_public_key[0])));
+    /* Expand the normalized key and convert from Montgomery to Edwards form. */
+    /*
+     * If one wanted to use Edwards rather than Montgomery, the three lines
+     * below could be replaced with the following two lines:
+     *
+     *  memcpy(expanded_public_key[1], R_mod_p, (sizeof(expanded_public_key[1])));
+     *  memcpy(expanded_public_key[0], public_key, (sizeof(expanded_public_key[0])));
+     *
+     * */
+    memcpy(expanded_public_key[1], E[1], (sizeof(expanded_public_key[1]))); // E[1] ==2
+    memcpy(expanded_public_key[0], public_key, (sizeof(expanded_public_key[0]))); // Original value from user in Montgomery form
+    fp_add(expanded_public_key[0], expanded_public_key[0], E[0]); // E[0] == 4
 
     /* Operate on the expanded public key. */
     csidh_validate = csidh(shared_secret_key, private_key, expanded_public_key);
@@ -232,13 +242,17 @@ int main(int argc, char **argv) {
     fp shared_secret;
     fp_inv(shared_secret_key[1]);
     fp_mul(shared_secret, shared_secret_key[0], shared_secret_key[1]);
+    /* Convert from Edwards to Montgomery. */
+    fp_mul(shared_secret, shared_secret, E[1]); // x/y * 4
+    fp_sub(shared_secret, shared_secret, E[0]); // x/y - 2
 
     if (verbose) {
       pprint_sk(private_key);
       pprint_pk(expanded_public_key);
     }
+    /* Output shared secret in Little Endian to match the other known CSIDH
+     * implementations. */
     pprint_ss(shared_secret);
-
     return 0;
   }
 

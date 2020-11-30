@@ -50,6 +50,7 @@ help:
 	@echo "\nusage: make csidh BITLENGTH_OF_P=[512] TYPE=[WITHDUMMY_1/WITHDUMMY_2/DUMMYFREE]"
 	@echo "usage: make csidh_util BITLENGTH_OF_P=[512] TYPE=[WITHDUMMY_1/WITHDUMMY_2/DUMMYFREE]"
 	@echo "usage: make util_test"
+	@echo "usage: make regenerate_test_vectors"
 	@echo "usage: make action_cost BITLENGTH_OF_P=[512] TYPE=[WITHDUMMY_1/WITHDUMMY_2/DUMMYFREE]"
 	@echo "usage: make action_timing BITLENGTH_OF_P=[512] TYPE=[WITHDUMMY_1/WITHDUMMY_2/DUMMYFREE]"
 	@echo "usage: make clean\n"
@@ -60,15 +61,25 @@ util: csidh_util
 csidh_util:
 	$(CC) $(INC_DIR) $(FILES_REQUIRED_IN_CSIDH_UTIL) -o $(OUTPUT_CSIDH_UTIL) $(CFLAGS_CSIDH_UTIL) $(CFLAGS_ALWAYS)
 
+regenerate_test_vectors:
+	./bin/csidh-p512-util -g -p sample-keys/1.montgomery.le.pk -s sample-keys/1.montgomery.le.sk
+	./bin/csidh-p512-util -g -p sample-keys/2.montgomery.le.pk -s sample-keys/2.montgomery.le.sk
+	./bin/csidh-p512-util -g -p sample-keys/3.montgomery.le.pk -s sample-keys/3.montgomery.le.sk
+	./bin/csidh-p512-util -g -p sample-keys/4.montgomery.le.pk -s sample-keys/4.montgomery.le.sk
+	./bin/csidh-p512-util -d -p sample-keys/2.montgomery.le.pk -s sample-keys/1.montgomery.le.sk > sample-keys/1-2.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/1.montgomery.le.pk -s sample-keys/2.montgomery.le.sk > sample-keys/2-1.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/2.montgomery.le.pk -s sample-keys/3.montgomery.le.sk > sample-keys/3-2.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/3.montgomery.le.pk -s sample-keys/4.montgomery.le.sk > sample-keys/4-3.ss.test_result
+
 util_test: util
 	echo "BEGIN util-test"
-	./bin/csidh-p512-util -d -p sample-keys/1.pk -s sample-keys/2.sk > sample-keys/1-2.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/2.montgomery.le.pk -s sample-keys/1.montgomery.le.sk > sample-keys/1-2.ss.test_result
 	diff sample-keys/1-2.ss.test_result sample-keys/1-2.ss
-	./bin/csidh-p512-util -d -p sample-keys/2.pk -s sample-keys/1.sk > sample-keys/2-1.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/1.montgomery.le.pk -s sample-keys/2.montgomery.le.sk > sample-keys/2-1.ss.test_result
 	diff sample-keys/2-1.ss.test_result sample-keys/2-1.ss
-	./bin/csidh-p512-util -d -p sample-keys/3.pk -s sample-keys/2.sk > sample-keys/3-2.ss.test_result
+	./bin/csidh-p512-util -d -p sample-keys/2.montgomery.le.pk -s sample-keys/3.montgomery.le.sk > sample-keys/3-2.ss.test_result
 	diff sample-keys/3-2.ss.test_result sample-keys/3-2.ss
-	./bin/csidh-p512-util -d -p sample-keys/4.pk -s sample-keys/3.sk > sample-keys/4-3.ss.test_result
+	./bin/csidh-p512-util -p sample-keys/3.montgomery.le.pk -s sample-keys/4.montgomery.le.sk > sample-keys/4-3.ss.test_result
 	diff sample-keys/4-3.ss.test_result sample-keys/4-3.ss
 	rm sample-keys/*.test_result
 	echo "END util-test"
