@@ -1,0 +1,3 @@
+These keys are CSIDH test vector keys. The public keys and the shared secret
+output are little endian and in the Montgomery form. The secret key format is
+not portable between implementations.
